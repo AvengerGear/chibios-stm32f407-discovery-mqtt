@@ -19,10 +19,8 @@
 
 #include "ch.h"
 #include "chvt.h"
-#include "lwip/sockets.h"
-#include "lwip/netdb.h"
-
-#define LWIP_COMPAT_SOCKETS 1
+#include "lwip/api.h"
+#include "lwip/netbuf.h"
 
 typedef struct Timer Timer;
 
@@ -34,7 +32,7 @@ typedef struct Network Network;
 
 struct Network
 {
-	int my_socket;
+	struct netconn *netconn;
 	int (*mqttread) (Network*, unsigned char*, int, int);
 	int (*mqttwrite) (Network*, unsigned char*, int, int);
 	void (*disconnect) (Network*);
