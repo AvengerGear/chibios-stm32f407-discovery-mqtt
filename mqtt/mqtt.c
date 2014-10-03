@@ -52,7 +52,7 @@ msg_t mqtt_client(void *p) {
   data.clientID.cstring = "discovery";
   data.username.cstring = "discovery";
   data.password.cstring = "hello";
-  /* data.keepAliveInterval = 30; */
+  data.keepAliveInterval = 5;
   data.cleansession = 1;
   rc = MQTTConnect (&c, &data);
   if (rc == MQTT_FAILURE) {

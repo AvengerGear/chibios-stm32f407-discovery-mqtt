@@ -65,6 +65,7 @@ int main(void) {
    * Set Pad Mode to PUSHPULL on D0
    */
   palSetPadMode(GPIOD, GPIOD_PIN0, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearPad(GPIOD, GPIOD_PIN0);
 
   /*
    * Creates the blinker thread.

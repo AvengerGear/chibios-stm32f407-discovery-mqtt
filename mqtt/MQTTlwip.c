@@ -54,30 +54,49 @@ int mqtt_lwip_read(Network* n, unsigned char* buffer, int len, int timeout_ms)
 {
 	int rc;
 	struct netbuf *inbuf;
+	int offset = 0;
 
 	if (timeout_ms <= 0) {
 		timeout_ms = 100;
 	}
-
 	netconn_set_recvtimeout(n->netconn, timeout_ms);
-	if (rc != ERR_OK) {
-		return -1;
-	}
 
 	int bytes = 0;
+
 	while (bytes < len) {
-		rc = netconn_recv(n->netconn, &inbuf);
-		if (rc != ERR_OK) {
-			if (errno != ENOTCONN && errno != ECONNRESET) {
-				bytes = -1;
-				break;
-			}
+		if (n->netbuf != NULL) {
+			inbuf = n->netbuf;
+			offset = n->netbuf_offset;
+			rc = ERR_OK;
 		} else {
-			bytes += netbuf_len(inbuf);
+			rc = netconn_recv(n->netconn, &inbuf);
+			offset = 0;
+		}
+
+		if (rc != ERR_OK) {
+			if (rc != ERR_TIMEOUT) {
+				bytes = -1;
+			}
+			break;
+		} else {
+			int nblen = netbuf_len(inbuf) - offset;
+			if ((bytes + nblen) > len) {
+				netbuf_copy_partial(inbuf, buffer + bytes,
+						len - bytes, offset);
+				n->netbuf = inbuf;
+				n->netbuf_offset = offset + len - bytes;
+				bytes = len;
+			} else {
+				netbuf_copy_partial(inbuf, buffer + bytes,
+						nblen, offset);
+				bytes += nblen;
+				netbuf_delete(inbuf);
+				n->netbuf = NULL;
+				n->netbuf_offset = 0;
+			}
 		}
 	}
 
-	netbuf_copy(inbuf, buffer, bytes);
 	return bytes;
 }
 
@@ -87,10 +106,13 @@ int mqtt_lwip_write(Network* n, unsigned char* buffer, int len, int timeout_ms)
 	if (timeout_ms <= 0) {
 		timeout_ms = 100;
 	}
+	netconn_set_sendtimeout(n->netconn, timeout_ms);
 
-	/* netconn_set_recvtimeout(n->netconn, timeout_ms); */
-	int rc = netconn_write(n->netconn, buffer, len, NETCONN_COPY);
-	return rc;
+	int rc = netconn_write(n->netconn, buffer, len, NETCONN_NOCOPY);
+	if (rc != ERR_OK) {
+		return -1;
+	}
+	return len;
 }
 
 
@@ -99,14 +121,14 @@ void mqtt_lwip_disconnect(Network* n)
 	netconn_close(n->netconn);
 	netconn_delete(n->netconn);
 	n->netconn = NULL;
-	netbuf_delete(n->netbuf);
-	n->netbuf = NULL;
 }
 
 
 void NewNetwork(Network* n)
 {
 	n->netconn = NULL;
+	n->netbuf = NULL;
+	n->netbuf_offset = 0;
 	n->mqttread = mqtt_lwip_read;
 	n->mqttwrite = mqtt_lwip_write;
 	n->disconnect = mqtt_lwip_disconnect;
@@ -116,8 +138,8 @@ int ConnectNetwork(Network* n, char* addr, int port)
 {
 	struct ip_addr ip_addr;
 	int rc = -1;
-
-	if (rc = netconn_gethostbyname(addr, &ip_addr) != ERR_OK) {
+	rc = netconn_gethostbyname(addr, &ip_addr);
+	if (rc != ERR_OK) {
 		return rc;
 	}
 
