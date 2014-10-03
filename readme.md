@@ -7,11 +7,19 @@ Target
 The demo runs on an STM32F407-Discovery board, with an external PHY attached
 using [a method described in TKJ Electronics Website][1].
 
+The board file is located in `boards` directory. Please copy the
+`NONSTANDARD_STM32F4_DISCOVERY_DP83848` into `boards` directory of ChibiOS/RT
+installation. And, please modify `Makefile` to match your environment. Also if
+you are using different board from STM32F407-Discovery, modifying `Makefile`
+and `mcuconf.h` is mandatory.
+
+Current code is based on ChibiOS/RT 2.6.5.
+
 The Demo
 --------
 
 This demo connects to a MQTT broker at `192.168.1.1:1883`, and listens message
-to its own channel.  By sending "on" and "off" to the channel, the board
+to its own channel.  By sending `on` and `off` to the channel, the board
 switches the state of D0 and LED5.
 
 Also, this board has its own web server running at `192.168.1.20:80`, and the
